@@ -129,31 +129,9 @@
     box-shadow:0 0 0 2px var(--alliance-gold-soft), 0 6px 16px rgba(0,0,0,.35);
   }
 
-  .tier-row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
-  select{
-    flex:1;
-    min-width:200px;
-    background:var(--alliance-navy);
-    color:var(--text);
-    border:1px solid var(--panel-line);
-    border-radius:8px;
-    padding:11px 12px;
-    font-size:14px;
-    font-family:inherit;
-  }
-  .chance-pill{
-    background:var(--alliance-blue);
-    color:#fff;
-    font-weight:700;
-    font-size:13px;
-    padding:9px 14px;
-    border-radius:999px;
-    white-space:nowrap;
-  }
-
   .slots{display:flex; flex-direction:column; gap:10px;}
   .slot{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   }
   .slot .num{
     width:26px;height:26px;border-radius:50%;
@@ -161,8 +139,57 @@
     display:flex;align-items:center;justify-content:center;
     font-size:12px;font-weight:700;color:#fff;flex-shrink:0;
   }
-  input[type="number"]{
-    flex:1;
+  .slot .fixed-name{
+    flex:1 1 140px;
+    min-width:120px;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--text);
+    background:color-mix(in srgb, var(--alliance-blue) 20%, var(--panel));
+    border:1px solid var(--panel-line);
+    border-radius:8px;
+    padding:11px 12px;
+  }
+  .slot .name-input{
+    flex:1 1 140px;
+    min-width:120px;
+  }
+  .slot .item-select{
+    flex:1 1 140px;
+    min-width:120px;
+    font-size:13.5px;
+    font-weight:600;
+    font-family:inherit;
+    color:var(--text);
+    background-color:color-mix(in srgb, var(--alliance-blue) 20%, var(--panel));
+    border:1px solid var(--panel-line);
+    border-radius:8px;
+    padding:11px 12px;
+    line-height:1.2;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    appearance:none;
+    cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9b7cf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 10px center;
+    background-size:14px;
+    padding-right:32px;
+  }
+  .slot .item-select option{
+    background:var(--panel);
+    color:var(--text);
+  }
+  .slot .qty-input{
+    flex:0 0 66px;
+    width:66px;
+    text-align:center;
+  }
+  .slot .price-input{
+    flex:1 1 110px;
+    min-width:100px;
+  }
+  input[type="number"], input[type="text"]{
     background:var(--alliance-navy);
     color:var(--text);
     border:1px solid var(--panel-line);
@@ -171,7 +198,7 @@
     font-size:14px;
     font-family:inherit;
   }
-  input[type="number"]:focus, select:focus, .type-btn:focus{
+  input[type="number"]:focus, input[type="text"]:focus, select:focus, .type-btn:focus{
     outline:2px solid var(--alliance-gold-soft);
     outline-offset:1px;
   }
@@ -187,6 +214,7 @@
     display:flex; align-items:center; gap:12px; margin-top:16px;
   }
   .vs-row label{font-size:13px; color:var(--text-dim); white-space:nowrap;}
+  .vs-row input{flex:1;}
 
   .result{
     text-align:center;
@@ -204,7 +232,6 @@
   th,td{padding:8px 6px; text-align:left; border-bottom:1px solid var(--panel-line);}
   th{color:var(--alliance-gold-soft); font-weight:600; font-size:12px;}
   td.chance{color:var(--text-dim);}
-  tr.current-tier{background:color-mix(in srgb, var(--alliance-blue) 25%, transparent);}
 
   footer{text-align:center; color:var(--text-dim); font-size:12px; margin-top:8px;}
 </style>
@@ -221,14 +248,6 @@
   <div class="panel">
     <h2>Elemento</h2>
     <div class="type-grid" id="typeGrid"></div>
-  </div>
-
-  <div class="panel">
-    <h2>Tier da stone</h2>
-    <div class="tier-row">
-      <select id="tierSelect"></select>
-      <span class="chance-pill" id="chancePill">50%</span>
-    </div>
   </div>
 
   <div class="panel">
@@ -309,16 +328,179 @@ const TIERS = [
   ["+45 até +50","Mystic",5]
 ];
 
+const STONE_NAMES = {
+  BUG: "Cocoon Stone",
+  DARK: "Darkness Stone",
+  DRAGON: "Crystal Stone",
+  ELECTRIC: "Thunder Stone",
+  FAIRY: "Fairy Stone",
+  FIGHTING: "Punch Stone",
+  FIRE: "Fire Stone",
+  FLYING: "Feather Stone",
+  GHOST: "Ghost Stone",
+  GRASS: "Leaf Stone",
+  GROUND: "Earth Stone",
+  ICE: "Ice Stone",
+  NORMAL: "Heart Stone",
+  POISON: "Venom Stone",
+  PSYCHIC: "Enigma Stone",
+  ROCK: "Rock Stone",
+  STEEL: "Metal Stone",
+  WATER: "Water Stone"
+};
+
+function fragmentName(type){
+  return type.charAt(0) + type.slice(1).toLowerCase() + " Fragment";
+}
+
+const SPECIAL_ITEMS = {
+  BUG: [
+    {name:"Scythe", creature:"Scyther"},
+    {name:"Scizor Claw", creature:"Scizor"},
+    {name:"Pinsir Horn", creature:"Pinsir"}
+  ],
+  DARK: [
+    {name:"Tyranitar Tail", creature:"Tyranitar"},
+    {name:"Dark Canine Horns", creature:"Houndoom"},
+    {name:"Shadow Tail", creature:"Hydreidon"},
+    {name:"Dark Ears", creature:"Umbreon"}
+  ],
+  DRAGON: [
+    {name:"Dragonair Tail", creature:"Dragonair"},
+    {name:"Shadow Tail", creature:"Hydreidon"},
+    {name:"Sea Dragon Fin", creature:"Kingdra"},
+    {name:"Dragonite Tail", creature:"Dragonite"}
+  ],
+  ELECTRIC: [
+    {name:"Electric Collar", creature:"Jolteon"},
+    {name:"Electric Ear", creature:"Raichu"},
+    {name:"Electric Tail", creature:"Electabuzz"},
+    {name:"Electric Sheep Tail", creature:"Ampharos"},
+    {name:"Luxray Ear", creature:"Luxray"}
+  ],
+  FAIRY: [
+    {name:"Mimic Clothes", creature:"Mr. Mime"},
+    {name:"Pink Fairy Bow", creature:"Sylveon"},
+    {name:"Mystic Petal", creature:"Florges"},
+    {name:"Yellow Mimikyu Head", creature:"Mimikyu"}
+  ],
+  FIGHTING: [
+    {name:"Belt of Champions", creature:"Machamp"},
+    {name:"Big Fist Gloves", creature:"Poliwrath"},
+    {name:"Martial Arts Tail", creature:"Hitmontop"},
+    {name:"Kick Machine", creature:"Hitmonlee"},
+    {name:"Punching Machine", creature:"Hitmonchan"},
+    {name:"Poison Bladder", creature:"Toxicroak"}
+  ],
+  FIRE: [
+    {name:"Fire Roof", creature:"Rapidash"},
+    {name:"Magma Shell", creature:"Magcargo"},
+    {name:"Fox Tail", creature:"Ninetales"},
+    {name:"Dark Canine Horns", creature:"Houndoom"},
+    {name:"Blaze Tail", creature:"Flareon"},
+    {name:"Giant Piece of Fur", creature:"Arcanine"},
+    {name:"Magma Foot", creature:"Magmar"},
+    {name:"Fire Wings", creature:"Charizard"}
+  ],
+  FLYING: [
+    {name:"Farfetch'd Wing", creature:"Farfetch'd"},
+    {name:"Fire Wing", creature:"Charizard"},
+    {name:"Steel Wing", creature:"Skarmory"},
+    {name:"Dodrio Feather", creature:"Dodrio"},
+    {name:"Dragonite Tail", creature:"Dragonite"},
+    {name:"Gyarados Tail", creature:"Gyarados"},
+    {name:"Scythe", creature:"Scyther"},
+    {name:"Blue Ray Tail", creature:"Mantine"}
+  ],
+  GHOST: [
+    {name:"Ectoplasm", creature:"Gengar"},
+    {name:"Miss Traces", creature:"Misdreavus"},
+    {name:"Yellow Mimikyu Head", creature:"Mimikyu"}
+  ],
+  GRASS: [
+    {name:"Red Petal", creature:"Venusaur"},
+    {name:"Big Petal", creature:"Meganium"},
+    {name:"Gaia Hands", creature:"Tangrowth"},
+    {name:"Piece of Rock", creature:"Torterra"}
+  ],
+  GROUND: [
+    {name:"King Ear", creature:"Nidoking"},
+    {name:"Queen Ear", creature:"Nidoqueen"},
+    {name:"Stone Rocks", creature:"Golem"},
+    {name:"Rock Plate", creature:"Pupitar"},
+    {name:"Steelix Tail", creature:"Steelix"},
+    {name:"Bone", creature:"Marowak"},
+    {name:"Piece of Rock", creature:"Torterra"}
+  ],
+  ICE: [
+    {name:"Lapras Fin", creature:"Lapras"},
+    {name:"Psychic Wig", creature:"Jynx"}
+  ],
+  NORMAL: [
+    {name:"Cow Tail", creature:"Miltank"},
+    {name:"Bull Tail", creature:"Tauros"},
+    {name:"Kangaskhan Ear", creature:"Kangaskhan"},
+    {name:"Farfetch'd Wing", creature:"Farfetch'd"},
+    {name:"Big Crest", creature:"Pidgeot"},
+    {name:"Snorlax Paw", creature:"Snorlax"}
+  ],
+  POISON: [
+    {name:"Red Petal", creature:"Venusaur"},
+    {name:"Ectoplasm", creature:"Gengar"},
+    {name:"Stinky Hand", creature:"Muk"},
+    {name:"Giant Ruby", creature:"Tentacruel"},
+    {name:"King Ear", creature:"Nidoking"}
+  ],
+  PSYCHIC: [
+    {name:"Psychic Wig", creature:"Jynx"},
+    {name:"Mimic Clothes", creature:"Mr. Mime"},
+    {name:"Two-eyed Black Tail", creature:"Wobbuffet"},
+    {name:"Psychic Moustache", creature:"Alakazam"},
+    {name:"Psychic Ears", creature:"Espeon"},
+    {name:"Slowking Necklace", creature:"Slowking"}
+  ],
+  ROCK: [
+    {name:"Tyranitar Tail", creature:"Tyranitar"},
+    {name:"Magma Shell", creature:"Magcargo"},
+    {name:"Rock Plate", creature:"Pupitar"},
+    {name:"Stone Rocks", creature:"Golem"}
+  ],
+  STEEL: [
+    {name:"Steel Wing", creature:"Skarmory"},
+    {name:"Steelix Tail", creature:"Steelix"},
+    {name:"Scizor Claw", creature:"Scizor"}
+  ],
+  WATER: [
+    {name:"Blue Ray Tail", creature:"Mantine"},
+    {name:"Frog Topknot", creature:"Politoed"},
+    {name:"Big Fist Gloves", creature:"Poliwrath"},
+    {name:"Red Hair", creature:"Feraligatr"},
+    {name:"Giant Ruby", creature:"Tentacruel"},
+    {name:"Lapras Fin", creature:"Lapras"},
+    {name:"Sea Dragon Fin", creature:"Kingdra"},
+    {name:"Aquatic Tail", creature:"Vaporeon"},
+    {name:"Gyarados Tail", creature:"Gyarados"}
+  ]
+};
+
 const typeGrid = document.getElementById('typeGrid');
-const tierSelect = document.getElementById('tierSelect');
-const chancePill = document.getElementById('chancePill');
 const slotsEl = document.getElementById('slots');
 const sumValueEl = document.getElementById('sumValue');
 const readyPriceEl = document.getElementById('readyPrice');
 const resultBox = document.getElementById('resultBox');
 const tierTableBody = document.querySelector('#tierTable tbody');
 
-let state = { type: TYPES[0][0], tierIndex: 0, slots: ["","","","",""], ready: "" };
+let state = {
+  type: TYPES[0][0],
+  slots: [
+    {qty:"1", price:""},
+    {qty:"1", price:""},
+    {name:"", qty:"1", price:""},
+    {name:"", qty:"1", price:""},
+    {name:"", qty:"1", price:""}
+  ],
+  ready: ""
+};
 
 function buildTypeGrid(){
   typeGrid.innerHTML = "";
@@ -329,25 +511,14 @@ function buildTypeGrid(){
     btn.innerHTML = `<span class="icon"><svg viewBox="0 0 24 24" width="16" height="16">${TYPE_ICONS[name]}</svg></span><span>${name.charAt(0)+name.slice(1).toLowerCase()}</span>`;
     btn.addEventListener('click', ()=>{
       state.type = name;
+      state.slots[2] = {name:"", qty:"1", price:""};
+      state.slots[3] = {name:"", qty:"1", price:""};
+      state.slots[4] = {name:"", qty:"1", price:""};
       buildTypeGrid();
+      buildSlots();
     });
     typeGrid.appendChild(btn);
   });
-}
-
-function buildTierSelect(){
-  tierSelect.innerHTML = "";
-  TIERS.forEach(([range,name,chance], i)=>{
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = `${name} (${range})`;
-    tierSelect.appendChild(opt);
-  });
-  tierSelect.value = state.tierIndex;
-  updateChancePill();
-}
-function updateChancePill(){
-  chancePill.textContent = TIERS[state.tierIndex][2] + "%";
 }
 
 function buildSlots(){
@@ -355,34 +526,126 @@ function buildSlots(){
   for(let i=0;i<5;i++){
     const row = document.createElement('div');
     row.className = 'slot';
-    row.innerHTML = `<span class="num">${i+1}</span>`;
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    input.placeholder = '0';
-    input.value = state.slots[i] || "";
-    input.addEventListener('input', ()=>{
-      state.slots[i] = input.value;
+
+    const badge = document.createElement('span');
+    badge.className = 'num';
+    badge.textContent = i+1;
+    row.appendChild(badge);
+
+    if(i===0 || i===1){
+      const fixedName = document.createElement('span');
+      fixedName.className = 'fixed-name';
+      fixedName.textContent = i===0 ? fragmentName(state.type) : STONE_NAMES[state.type];
+      row.appendChild(fixedName);
+    } else {
+      const itemSelect = document.createElement('select');
+      itemSelect.className = 'item-select';
+      itemSelect.dataset.slot = i;
+      row.appendChild(itemSelect);
+      itemSelect.addEventListener('change', ()=>{
+        state.slots[i].name = itemSelect.value;
+        updateSelectTitle(itemSelect);
+        refreshItemSelects();
+        recalc();
+      });
+    }
+
+    const qtyInput = document.createElement('input');
+    qtyInput.type = 'number';
+    qtyInput.className = 'qty-input';
+    qtyInput.min = '1';
+    qtyInput.placeholder = 'Qtd';
+    qtyInput.value = state.slots[i].qty || "1";
+    qtyInput.addEventListener('input', ()=>{
+      state.slots[i].qty = qtyInput.value;
       recalc();
     });
-    row.appendChild(input);
+    row.appendChild(qtyInput);
+
+    const priceInput = document.createElement('input');
+    priceInput.type = 'number';
+    priceInput.className = 'price-input';
+    priceInput.min = '0';
+    priceInput.placeholder = 'Preço unit.';
+    priceInput.value = state.slots[i].price || "";
+    priceInput.addEventListener('input', ()=>{
+      state.slots[i].price = priceInput.value;
+      recalc();
+    });
+    row.appendChild(priceInput);
+
     slotsEl.appendChild(row);
   }
+  refreshItemSelects();
+}
+
+function updateSelectTitle(selectEl){
+  const items = SPECIAL_ITEMS[state.type] || [];
+  const match = items.find(it => it.name === selectEl.value);
+  selectEl.title = match ? `Dropado por: ${match.creature}` : 'Selecione um item especial';
+}
+
+function refreshItemSelects(){
+  const items = SPECIAL_ITEMS[state.type] || [];
+  const selects = slotsEl.querySelectorAll('.item-select');
+  selects.forEach(sel=>{
+    const slotIndex = parseInt(sel.dataset.slot,10);
+    const currentValue = state.slots[slotIndex].name || "";
+    const chosenElsewhere = [2,3,4]
+      .filter(i=>i!==slotIndex)
+      .map(i=> state.slots[i].name)
+      .filter(Boolean);
+
+    sel.innerHTML = "";
+    const blankOpt = document.createElement('option');
+    blankOpt.value = "";
+    blankOpt.textContent = "Selecionar item...";
+    sel.appendChild(blankOpt);
+
+    items.forEach(it=>{
+      const opt = document.createElement('option');
+      opt.value = it.name;
+      opt.textContent = it.name;
+      opt.title = `Dropado por: ${it.creature}`;
+      if(chosenElsewhere.includes(it.name) && it.name !== currentValue){
+        opt.disabled = true;
+      }
+      sel.appendChild(opt);
+    });
+
+    sel.value = currentValue;
+    updateSelectTitle(sel);
+  });
 }
 
 function buildTierTable(){
   tierTableBody.innerHTML = `<tr><th>Evolução</th><th>Pedra</th><th>Chance</th></tr>`;
-  TIERS.forEach(([range,name,chance], i)=>{
+  TIERS.forEach(([range,name,chance])=>{
     const tr = document.createElement('tr');
-    if(i===state.tierIndex) tr.className = 'current-tier';
     tr.innerHTML = `<td>${range}</td><td>${name}</td><td class="chance">${chance}%</td>`;
     tierTableBody.appendChild(tr);
   });
 }
 
+function formatK(n){
+  const sign = n < 0 ? '-' : '';
+  n = Math.abs(n);
+  if(n >= 1000000){
+    return sign + trimDecimal(n/1000000) + 'kk';
+  }
+  if(n >= 1000){
+    return sign + trimDecimal(n/1000) + 'k';
+  }
+  return sign + n.toLocaleString('pt-BR');
+}
+function trimDecimal(v){
+  const rounded = Math.round(v*10)/10;
+  return rounded.toString().replace('.', ',');
+}
+
 function recalc(){
-  const sum = state.slots.reduce((acc,v)=> acc + (parseFloat(v)||0), 0);
-  sumValueEl.textContent = sum.toLocaleString('pt-BR');
+  const sum = state.slots.reduce((acc,s)=> acc + (parseFloat(s.price)||0) * (parseFloat(s.qty)||1), 0);
+  sumValueEl.textContent = formatK(sum);
 
   const ready = parseFloat(state.ready);
   if(!ready || ready<=0 || sum<=0){
@@ -395,28 +658,22 @@ function recalc(){
 
   if(diff > 0){
     resultBox.className = 'result good';
-    resultBox.innerHTML = `<b>Compensa montar</b>Montar os 5 itens custa ${sum.toLocaleString('pt-BR')}, ${pct}% mais barato que comprar pronta por ${ready.toLocaleString('pt-BR')}.`;
+    resultBox.innerHTML = `<b>Compensa montar</b>Montar os 5 itens custa ${formatK(sum)}, ${pct}% mais barato que comprar pronta por ${formatK(ready)}.`;
   } else if(diff < 0){
     resultBox.className = 'result bad';
-    resultBox.innerHTML = `<b>Compensa comprar pronta</b>A stone pronta custa ${ready.toLocaleString('pt-BR')}, ${pct}% mais barata que montar os 5 itens por ${sum.toLocaleString('pt-BR')}.`;
+    resultBox.innerHTML = `<b>Compensa comprar pronta</b>A stone pronta custa ${formatK(ready)}, ${pct}% mais barata que montar os 5 itens por ${formatK(sum)}.`;
   } else {
     resultBox.className = 'result neutral';
-    resultBox.innerHTML = `<b>Empate</b>Os dois caminhos custam o mesmo: ${sum.toLocaleString('pt-BR')}.`;
+    resultBox.innerHTML = `<b>Empate</b>Os dois caminhos custam o mesmo: ${formatK(sum)}.`;
   }
 }
 
-tierSelect.addEventListener('change', ()=>{
-  state.tierIndex = parseInt(tierSelect.value,10);
-  updateChancePill();
-  buildTierTable();
-});
 readyPriceEl.addEventListener('input', ()=>{
   state.ready = readyPriceEl.value;
   recalc();
 });
 
 buildTypeGrid();
-buildTierSelect();
 buildSlots();
 buildTierTable();
 recalc();
