@@ -233,6 +233,62 @@
   th{color:var(--alliance-gold-soft); font-weight:600; font-size:12px;}
   td.chance{color:var(--text-dim);}
 
+  /* ===== Abas ===== */
+  .tabs-bar{
+    display:flex; align-items:center; gap:6px;
+    margin-bottom:18px;
+    overflow-x:auto;
+    padding-bottom:4px;
+    scrollbar-width:thin;
+  }
+  .tab{
+    --tcolor:var(--alliance-blue);
+    display:flex; align-items:center; gap:6px;
+    flex:0 0 auto;
+    border:1px solid var(--panel-line);
+    background:color-mix(in srgb, var(--tcolor) 14%, var(--panel));
+    color:var(--text);
+    border-radius:10px;
+    padding:0 4px 0 0;
+    font-size:12.5px; font-weight:600;
+    transition:transform .12s ease;
+  }
+  .tab:hover{transform:translateY(-1px);}
+  .tab.active{
+    background:var(--tcolor);
+    color:#12172a;
+    box-shadow:0 0 0 2px var(--alliance-gold-soft), 0 6px 16px rgba(0,0,0,.35);
+  }
+  .tab .tab-main{
+    display:flex; align-items:center; gap:6px;
+    background:none; border:0; color:inherit; font:inherit; cursor:pointer;
+    padding:9px 4px 9px 10px;
+  }
+  .tab .tab-main .icon{display:flex; color:#fff; filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));}
+  .tab .tab-main .icon svg{display:block;}
+  .tab .tab-close{
+    background:none; border:0; color:inherit; cursor:pointer;
+    width:22px; height:22px; border-radius:50%;
+    font-size:15px; line-height:1; opacity:.6;
+    display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .tab .tab-close:hover{opacity:1; background:rgba(0,0,0,.2);}
+  .tab-add{
+    flex:0 0 auto;
+    width:36px; height:36px;
+    border:1px dashed var(--alliance-gold-soft);
+    background:transparent;
+    color:var(--alliance-gold-soft);
+    border-radius:10px;
+    font-size:20px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tab-add:hover{background:color-mix(in srgb, var(--alliance-gold) 15%, transparent);}
+  .tab-add:disabled{opacity:.35; cursor:not-allowed;}
+  .tab:focus-visible,.tab-main:focus-visible,.tab-close:focus-visible,.tab-add:focus-visible{
+    outline:2px solid var(--alliance-gold-soft); outline-offset:1px;
+  }
+
   footer{text-align:center; color:var(--text-dim); font-size:12px; margin-top:8px;}
 </style>
 </head>
@@ -244,6 +300,8 @@
     <h1>Calculadora de Upgrade Stones</h1>
     <p>Compare o custo de montar uma stone contra comprá-la pronta no mercado</p>
   </div>
+
+  <div class="tabs-bar" id="tabsBar" role="tablist" aria-label="Abas de elementos"></div>
 
   <div class="panel">
     <h2>Elemento</h2>
@@ -490,17 +548,106 @@ const readyPriceEl = document.getElementById('readyPrice');
 const resultBox = document.getElementById('resultBox');
 const tierTableBody = document.querySelector('#tierTable tbody');
 
-let state = {
-  type: TYPES[0][0],
-  slots: [
-    {qty:"1", price:""},
-    {qty:"1", price:""},
-    {name:"", qty:"1", price:""},
-    {name:"", qty:"1", price:""},
-    {name:"", qty:"1", price:""}
-  ],
-  ready: ""
-};
+const MAX_TABS = 10;
+let tabSeq = 0;
+
+function newTab(type){
+  return {
+    id: ++tabSeq,
+    type: type,
+    slots: [
+      {qty:"1", price:""},
+      {qty:"1", price:""},
+      {name:"", qty:"1", price:""},
+      {name:"", qty:"1", price:""},
+      {name:"", qty:"1", price:""}
+    ],
+    ready: ""
+  };
+}
+
+const app = { tabs: [newTab(TYPES[0][0])], active: 0 };
+let state = app.tabs[app.active];   // sempre aponta para a aba ativa
+
+const tabsBar = document.getElementById('tabsBar');
+
+function typeColor(t){ return (TYPES.find(x=>x[0]===t)||[])[1] || '#3a6fc4'; }
+function typeLabel(t){ return t.charAt(0) + t.slice(1).toLowerCase(); }
+
+function buildTabs(){
+  tabsBar.innerHTML = "";
+  app.tabs.forEach((tab, idx)=>{
+    const el = document.createElement('div');
+    el.className = 'tab' + (idx===app.active ? ' active' : '');
+    el.style.setProperty('--tcolor', typeColor(tab.type));
+
+    const main = document.createElement('button');
+    main.type = 'button';
+    main.className = 'tab-main';
+    main.setAttribute('role','tab');
+    main.setAttribute('aria-selected', idx===app.active ? 'true' : 'false');
+    main.innerHTML = `<span class="icon"><svg viewBox="0 0 24 24" width="15" height="15">${TYPE_ICONS[tab.type]}</svg></span><span>${typeLabel(tab.type)}</span>`;
+    main.addEventListener('click', ()=> switchTab(idx));
+    el.appendChild(main);
+
+    if(app.tabs.length > 1){
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'tab-close';
+      close.title = 'Fechar aba';
+      close.setAttribute('aria-label', 'Fechar aba ' + typeLabel(tab.type));
+      close.textContent = '×';
+      close.addEventListener('click', (e)=>{ e.stopPropagation(); closeTab(idx); });
+      el.appendChild(close);
+    } else {
+      el.style.paddingRight = '6px';
+    }
+    tabsBar.appendChild(el);
+  });
+
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'tab-add';
+  add.title = 'Adicionar aba';
+  add.setAttribute('aria-label','Adicionar aba');
+  add.textContent = '+';
+  add.disabled = app.tabs.length >= MAX_TABS;
+  add.addEventListener('click', addTab);
+  tabsBar.appendChild(add);
+}
+
+function renderActive(){
+  state = app.tabs[app.active];
+  readyPriceEl.value = state.ready || "";
+  buildTabs();
+  buildTypeGrid();
+  buildSlots();
+  recalc();
+}
+
+function switchTab(idx){
+  if(idx === app.active) return;
+  app.active = idx;
+  renderActive();
+}
+
+function addTab(){
+  if(app.tabs.length >= MAX_TABS) return;
+  // sugere o primeiro elemento que ainda não tem aba
+  const used = app.tabs.map(t=>t.type);
+  const next = (TYPES.find(([n])=>!used.includes(n)) || TYPES[0])[0];
+  app.tabs.push(newTab(next));
+  app.active = app.tabs.length - 1;
+  renderActive();
+}
+
+function closeTab(idx){
+  if(app.tabs.length <= 1) return;
+  app.tabs.splice(idx, 1);
+  if(app.active > idx) app.active--;
+  else if(app.active >= app.tabs.length) app.active = app.tabs.length - 1;
+  renderActive();
+}
 
 function buildTypeGrid(){
   typeGrid.innerHTML = "";
@@ -514,8 +661,10 @@ function buildTypeGrid(){
       state.slots[2] = {name:"", qty:"1", price:""};
       state.slots[3] = {name:"", qty:"1", price:""};
       state.slots[4] = {name:"", qty:"1", price:""};
+      buildTabs();
       buildTypeGrid();
       buildSlots();
+      recalc();
     });
     typeGrid.appendChild(btn);
   });
@@ -673,10 +822,8 @@ readyPriceEl.addEventListener('input', ()=>{
   recalc();
 });
 
-buildTypeGrid();
-buildSlots();
 buildTierTable();
-recalc();
+renderActive();
 </script>
 </body>
 </html>
